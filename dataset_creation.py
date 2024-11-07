@@ -26,8 +26,14 @@ def process_dataset(dataset):
     
     feature_extractor = ViTImageProcessor(
         image_size=64,
+        do_normalize=False,
+        do_resize=False,
+        do_rescale=False,
         )
-    dataset = dataset.map(lambda x: feature_extractor.preprocess(dataset["train"]["image"], return_tensors="tf"), batched=True)
+    dataset = dataset.map(lambda x: {
+        'image': feature_extractor.preprocess(x['image'], return_tensors="tf")['pixel_values'],
+        'label': x['label']
+    }, batched=True)
     #dataset.rename_column_("image", "images")
     #dataset.set_format("tensorflow")
     return dataset
