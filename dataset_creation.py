@@ -5,8 +5,9 @@ from transformers import ViTImageProcessor, ViTImageProcessorFast, ViTForImageCl
 
 
 def create_dataset():
-    #dataset = load_dataset('imagefolder', data_dir=f'train/GTSRB/Final_Training')
-    dataset = load_dataset('imagefolder', data_dir=f'train_cropped')
+    #dataset = load_dataset('imagefolder', data_dir='train/GTSRB/Final_Training')
+    dataset = load_dataset('imagefolder', data_dir='train_cropped',num_proc=64)
+    print("Dataset loaded")
     return dataset
 
 def augment_dataset(dataset):
@@ -23,20 +24,18 @@ def augment_dataset(dataset):
     return dataset_augmented
 
 def process_dataset(dataset):
-    
     feature_extractor = ViTImageProcessor(
         image_size=64,
-        do_normalize=False,
-        do_resize=False,
-        do_rescale=False,
-        )
-    dataset = dataset.map(lambda x: {
-        'image': feature_extractor.preprocess(x['image'], return_tensors="tf")['pixel_values'],
-        'label': x['label']
-    }, batched=True)
-    #dataset.rename_column_("image", "images")
-    #dataset.set_format("tensorflow")
+        do_normalize=True,
+        do_resize=True,
+        size=64,
+    )
+    dataset = dataset.map(lambda x: 
+        x.update(feature_extractor(x['image']),)
+    , batched=True)
+    print("Dataset processed")
     return dataset
+
 if __name__ == '__main__':
     dataset = create_dataset()
     #dataset = augment_dataset(dataset)
