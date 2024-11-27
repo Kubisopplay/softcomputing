@@ -6,34 +6,39 @@ import tensorflow as tf
 
 if __name__ == "__main__":
 
+    continue_training = True
+    
+    continue_from = 19
+    
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     dataset = process_dataset(create_dataset())
     num_classes = len(set(dataset['train']['label']))
     print(num_classes)
-    config = transformers.ViTConfig(
-        image_size=64,
-        num_channels=3, 
-        num_labels =43,
-        hidden_size=512,
-        num_hidden_layers=6,
-        num_attention_heads=16,
-        intermediate_size=3072,
-        hidden_act='gelu',
-        hidden_dropout_prob=0.1,
-        attention_probs_dropout_prob=0.1,
-        initializer_range=0.02,
-        layer_norm_eps=1e-12,
-        is_encoder_decoder=False,
-        use_cache=True,
-        output_attentions=False,
-        output_hidden_states=False,
-        return_dict=True,
-        )
+    if not continue_training:
+        config = transformers.ViTConfig(
+            image_size=64,
+            num_channels=3, 
+            num_labels =43,
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=16,
+            intermediate_size=3072,
+            hidden_act='gelu',
+            hidden_dropout_prob=0.1,
+            attention_probs_dropout_prob=0.1,
+            initializer_range=0.02,
+            layer_norm_eps=1e-12,
+            is_encoder_decoder=False,
+            use_cache=True,
+            output_attentions=False,
+            output_hidden_states=False,
+            return_dict=True,
+            )
 
-    model = TFViTForImageClassification(config=config)
+        model = TFViTForImageClassification(config=config)
 
 
-    optimizer = tf_keras.optimizers.Adam(learning_rate=0.001)
+    optimizer = tf_keras.optimizers.Adadelta()
 
     loss = tf_keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
@@ -42,7 +47,7 @@ if __name__ == "__main__":
         tf.keras.metrics.SparseTopKCategoricalAccuracy(3, name="top-3-accuracy"),
     ]
 
-    model.compile(loss=loss,metrics=metrics, optimizer=optimizer)
+    
 
     def convert_to_tf_dataset(dataset):
         def gen():
@@ -73,14 +78,22 @@ if __name__ == "__main__":
 
 
     #tf.config.run_functions_eagerly(True)
-
-
+    
+    
+    if continue_training:
+        config = transformers.ViTConfig.from_pretrained("model" + str(continue_from))
+        model = TFViTForImageClassification.from_pretrained("model" + str(continue_from), config=config)
+    model.compile(loss=loss,metrics=metrics, optimizer=optimizer)
     results = []
-    for i in range(2):
+    epochs = 30
+    for i in range(continue_from,epochs+continue_from):
         model.fit(train_dataset, epochs=1, batch_size=batch_size, steps_per_epoch=steps_per_epoch)
         results.append(model.evaluate(test_dataset, batch_size=batch_size))
-
+    model.save_pretrained('model'+str(epochs+continue_from))
     print(results)  
-    model.save_pretrained('model')
+    import json
+    with open("results.json", "w", encoding="UTF-8") as file:
+        file.write(json.dumps(results)) 
+   
 
 
